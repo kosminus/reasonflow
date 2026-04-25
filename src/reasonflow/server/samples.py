@@ -79,7 +79,9 @@ SAMPLE_OLLAMA = {
 }
 
 
-SAMPLES = [SAMPLE_OLLAMA]
+from reasonflow.server.example_seeds import EXAMPLE_SEEDS
+
+SAMPLES = [SAMPLE_OLLAMA, *EXAMPLE_SEEDS]
 
 
 def seed_samples(workflow_dir: Path) -> None:
