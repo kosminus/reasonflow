@@ -86,6 +86,30 @@ def trace(last: bool, dag_name: str | None, run_id: str | None, as_json: bool):
         click.echo()
 
 
+@main.command()
+@click.option("--host", default="127.0.0.1")
+@click.option("--port", default=8765, type=int)
+@click.option("--reload", is_flag=True, help="Auto-reload on code changes (dev)")
+def ui(host: str, port: int, reload: bool):
+    """Launch the visual builder UI."""
+    try:
+        import uvicorn
+    except ImportError:
+        click.echo("Missing dependency: pip install 'reasonflow[ui]'", err=True)
+        sys.exit(1)
+
+    from reasonflow.server.app import create_app
+
+    static_dir = Path(__file__).parent / "server" / "static"
+    app = create_app(static_dir=static_dir if static_dir.exists() else None)
+
+    click.echo(f"ReasonFlow UI → http://{host}:{port}")
+    if not (static_dir / "index.html").exists():
+        click.echo("Note: built UI not found. Run `cd ui && npm install && npm run build` first,")
+        click.echo("or run the dev server with `cd ui && npm run dev` (proxies to this API).")
+    uvicorn.run(app, host=host, port=port, reload=reload)
+
+
 @main.command("mcp")
 @click.argument("subcommand")
 @click.argument("server", default="")
