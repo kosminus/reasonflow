@@ -19,11 +19,15 @@ dependencies = [
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.0"]
+ui = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
 ]
-all = ["reasonflow[mcp,dev]"]
+all = ["reasonflow[mcp,ui,dev]"]
 
 [project.scripts]
 reasonflow = "reasonflow.cli:main"

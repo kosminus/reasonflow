@@ -70,6 +70,9 @@ class DAG:
         self.debug = debug
         self._chain: NodeChain | None = None
         self._nodes: dict[str, BaseNode] = {}
+        # Optional callback: fn(event: str, payload: dict) — called on
+        # node_start, node_end, node_error. Used by the UI server to stream.
+        self._on_span: Any = None
 
     def connect(self, chain: NodeChain | BaseNode) -> None:
         """Set the execution chain for this DAG."""
@@ -206,6 +209,7 @@ class DAG:
         )
         span.start()
         state.snapshot(node.name)
+        self._emit("node_start", {"node": node.name, "node_type": node.node_type})
 
         try:
             policy = node.config.retry_policy
@@ -245,11 +249,20 @@ class DAG:
 
             span.stop()
             trace.add_span(span)
+            self._emit("node_end", {
+                "node": node.name,
+                "output": result,
+                "tokens_in": span.tokens_in,
+                "tokens_out": span.tokens_out,
+                "cost": span.cost,
+                "duration_ms": span.duration_ms,
+            })
             return route
 
         except Exception as e:
             span.stop(error=str(e))
             trace.add_span(span)
+            self._emit("node_error", {"node": node.name, "error": str(e)})
             if node.config.is_optional:
                 return None
             raise
@@ -268,6 +281,15 @@ class DAG:
                 self._execute_node(node, state, trace, cost_tracker)
             )
         await asyncio.gather(*tasks)
+
+    def _emit(self, event: str, payload: dict[str, Any]) -> None:
+        """Fire optional on_span callback. Never raise."""
+        if self._on_span is None:
+            return
+        try:
+            self._on_span(event, payload)
+        except Exception:
+            pass
 
     @staticmethod
     def _find_node_index(
